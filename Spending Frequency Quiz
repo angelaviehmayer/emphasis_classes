@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spending Habits Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 550px; /* Adjusted max width for potentially wider legend */
+            height: 380px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 420px;
+            }
+        }
+        select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-800 min-h-screen flex flex-col items-center py-8 px-4">
+
+    <div class="w-full max-w-5xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-sky-700 mb-3">Spending Habits Quiz</h1>
+            <p class="text-lg text-stone-600">
+                Enter the amount you typically spend and its frequency for each category to see how your money is distributed.
+                This will help you understand your financial consumption patterns.
+            </p>
+        </header>
+
+        <main>
+            <section id="quiz-section" class="bg-white p-6 md:p-8 rounded-lg shadow-md mb-8">
+                <h2 class="text-2xl font-semibold text-sky-600 mb-6">Estimate Your Spending</h2>
+                <div id="categoriesContainer" class="space-y-6 mb-6">
+                    </div>
+                <button id="calculateBtn" class="bg-sky-600 text-white px-6 py-3 rounded-lg hover:bg-sky-700 w-full transition-colors duration-150 text-xl font-bold">
+                    Calculate and Analyze Spending
+                </button>
+            </section>
+
+            <section id="results-section" class="hidden bg-white p-6 md:p-8 rounded-lg shadow-md mb-8">
+                <h2 class="text-2xl font-semibold text-sky-600 mb-6">Your Spending Breakdown</h2>
+                <p class="text-xl text-stone-700 mb-4">Total Estimated Monthly Spending: <span id="totalSpending" class="font-bold text-sky-700">$0.00</span></p>
+                
+                <div class="chart-container mb-6">
+                    <canvas id="spendingPieChart"></canvas>
+                </div>
+
+                <div class="overflow-x-auto mb-6">
+                    <table class="min-w-full bg-white border border-stone-300 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 border-b border-stone-300 text-left text-sm font-medium text-stone-600 uppercase tracking-wider">Category</th>
+                                <th class="py-3 px-4 border-b border-stone-300 text-right text-sm font-medium text-stone-600 uppercase tracking-wider">Estimated Monthly Spend (USD)</th>
+                                <th class="py-3 px-4 border-b border-stone-300 text-right text-sm font-medium text-stone-600 uppercase tracking-wider">Percentage (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody" class="divide-y divide-stone-200">
+                            </tbody>
+                    </table>
+                </div>
+
+                <button id="resetBtn" class="bg-stone-400 text-white px-6 py-3 rounded-lg hover:bg-stone-500 w-full transition-colors duration-150 text-xl font-bold">
+                    Recalculate / Start Over
+                </button>
+            </section>
+        </main>
+
+        <footer class="text-center mt-12 py-4 border-t border-stone-300">
+            <p class="text-sm text-stone-500">&copy; 2024 Spending Habits Quiz. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        let spendingPieChartInstance = null;
+
+        const initialCategoriesData = [
+            { 
+                id: 'personalCare', 
+                name: 'Personal Care', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Expenses related to personal hygiene, grooming, and well-being.',
+                examples: ['Shampoo', 'Toothpaste', 'Haircuts', 'Skincare products']
+            },
+            { 
+                id: 'entertainment', 
+                name: 'Entertainment', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Money spent on leisure activities, hobbies, and enjoyment.',
+                examples: ['Streaming subscriptions', 'Movie tickets', 'Concerts', 'Video games']
+            },
+            { 
+                id: 'foodAndDrink', 
+                name: 'Food and Drink', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Costs associated with groceries, dining out, and beverages.',
+                examples: ['Groceries', 'Restaurant meals', 'Coffee', 'Snacks']
+            },
+            { 
+                id: 'transport', 
+                name: 'Transport', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Expenditures for commuting, travel, and vehicle maintenance.',
+                examples: ['Gasoline', 'Public transport fares', 'Car maintenance', 'Ride-sharing']
+            },
+            { 
+                id: 'electronics', 
+                name: 'Electronics', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Spending on electronic devices, gadgets, and related accessories.',
+                examples: ['Mobile phone', 'Headphones', 'Laptop', 'Smartwatch']
+            },
+            { 
+                id: 'clothes', 
+                name: 'Clothes', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Money spent on apparel, footwear, and fashion accessories.',
+                examples: ['Shirts', 'Pants', 'Shoes', 'Outerwear']
+            },
+            { 
+                id: 'housing', 
+                name: 'Housing', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Major costs related to your living space, including rent or mortgage.',
+                examples: ['Rent/Mortgage', 'Property taxes', 'Home repairs', 'Home insurance']
+            },
+            { 
+                id: 'utilities', 
+                name: 'Utilities', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Regular bills for essential services in your home.',
+                examples: ['Electricity', 'Water', 'Internet', 'Heating/Cooling']
+            },
+            { 
+                id: 'education', 
+                name: 'Education', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Expenses for learning, skill development, and academic pursuits.',
+                examples: ['Tuition fees', 'Books', 'Online courses', 'Workshops']
+            },
+            { 
+                id: 'health', 
+                name: 'Health', 
+                amount: 0, 
+                frequency: 'monthly',
+                description: 'Costs for medical care, prescriptions, and health-related services.',
+                examples: ['Health insurance', 'Doctor visits', 'Medications', 'Gym membership']
+            }
+        ];
+        let categoriesState = JSON.parse(JSON.stringify(initialCategoriesData)); // Deep copy for reset
+
+        const categoryColors = [
+            '#F08080', '#ADD8E6', '#90EE90', '#FFD700', '#DDA0DD', 
+            '#FFA07A', '#20B2AA', '#87CEFA', '#F4A460', '#9370DB' 
+        ];
+
+        const frequencyOptions = [
+            { value: 'daily', label: 'Daily', multiplier: 30.42 }, // Avg days per month
+            { value: 'weekly', label: 'Weekly', multiplier: 4.33 }, // Avg weeks per month
+            { value: 'monthly', label: 'Monthly', multiplier: 1 },
+            { value: 'annually', label: 'Annually', multiplier: 1/12 }
+        ];
+        
+        function wrapText(text, maxLen) {
+            if (typeof text !== 'string') return [''];
+            const words = text.split(' ');
+            let lines = [];
+            let currentLine = '';
+
+            words.forEach((word, index) => {
+                const testLine = index === 0 ? word : currentLine + ' ' + word;
+                if (testLine.length <= maxLen) {
+                    currentLine = testLine;
+                } else {
+                    if (currentLine.length > 0) lines.push(currentLine.trim());
+                    currentLine = word;
+                }
+                if (index === words.length - 1) {
+                   if (currentLine.length > 0) lines.push(currentLine.trim());
+                }
+            });
+            return lines.length > 0 ? lines : [text.substring(0,maxLen)]; // Ensure at least one line, possibly truncated
+        }
+
+        function createCategoryInput(category) {
+            const container = document.createElement('div');
+            container.className = 'category-input-item p-4 border border-stone-200 rounded-lg';
+
+            const title = document.createElement('h3');
+            title.className = 'text-xl font-medium text-sky-600 mb-2';
+            title.textContent = category.name;
+            container.appendChild(title);
+
+            const description = document.createElement('p');
+            description.className = 'text-sm text-stone-600 mb-2';
+            description.textContent = category.description;
+            container.appendChild(description);
+
+            const examplesList = document.createElement('ul');
+            examplesList.className = 'list-disc list-inside text-xs text-stone-500 mb-4';
+            category.examples.forEach(example => {
+                const li = document.createElement('li');
+                li.textContent = example;
+                examplesList.appendChild(li);
+            });
+            container.appendChild(examplesList);
+
+            const flexContainer = document.createElement('div');
+            flexContainer.className = 'flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0';
+            
+            const amountDiv = document.createElement('div');
+            amountDiv.className = 'flex-1';
+            const amountLabel = document.createElement('label');
+            amountLabel.htmlFor = `${category.id}_amount`;
+            amountLabel.className = 'block text-sm font-medium text-stone-700 mb-1';
+            amountLabel.textContent = 'Amount per occurrence ($)';
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.id = `${category.id}_amount`;
+            amountInput.min = '0';
+            amountInput.step = '0.01';
+            amountInput.value = category.amount > 0 ? category.amount.toFixed(2) : '0.00';
+            amountInput.className = 'border border-stone-300 rounded px-3 py-2 w-full focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none';
+            amountInput.placeholder = 'e.g., 50.00';
+            amountDiv.appendChild(amountLabel);
+            amountDiv.appendChild(amountInput);
+            flexContainer.appendChild(amountDiv);
+
+            const frequencyDiv = document.createElement('div');
+            frequencyDiv.className = 'flex-1';
+            const frequencyLabel = document.createElement('label');
+            frequencyLabel.htmlFor = `${category.id}_frequency`;
+            frequencyLabel.className = 'block text-sm font-medium text-stone-700 mb-1';
+            frequencyLabel.textContent = 'Frequency';
+            const frequencySelect = document.createElement('select');
+            frequencySelect.id = `${category.id}_frequency`;
+            frequencySelect.className = 'border border-stone-300 rounded px-3 py-2 w-full focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none appearance-none';
+            frequencyOptions.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.label;
+                if (opt.value === category.frequency) option.selected = true;
+                frequencySelect.appendChild(option);
+            });
+            frequencyDiv.appendChild(frequencyLabel);
+            frequencyDiv.appendChild(frequencySelect);
+            flexContainer.appendChild(frequencyDiv);
+            
+            container.appendChild(flexContainer);
+            return container;
+        }
+
+        function populateCategories() {
+            const categoriesContainer = document.getElementById('categoriesContainer');
+            categoriesContainer.innerHTML = ''; // Clear previous
+            categoriesState.forEach(cat => {
+                categoriesContainer.appendChild(createCategoryInput(cat));
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateCategories(); // Initial population
+
+            const quizSection = document.getElementById('quiz-section');
+            const resultsSection = document.getElementById('results-section');
+            const calculateBtn = document.getElementById('calculateBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const totalSpendingSpan = document.getElementById('totalSpending');
+            const resultsTableBody = document.getElementById('resultsTableBody');
+            const chartCtx = document.getElementById('spendingPieChart').getContext('2d');
+
+            calculateBtn.addEventListener('click', handleCalculation);
+            resetBtn.addEventListener('click', resetQuiz);
+
+            function handleCalculation() {
+                let totalMonthlySpend = 0;
+                const processedCategories = categoriesState.map(category => {
+                    const amountInput = document.getElementById(`${category.id}_amount`);
+                    const frequencySelect = document.getElementById(`${category.id}_frequency`);
+                    
+                    const amount = parseFloat(amountInput.value) || 0;
+                    const frequencyValue = frequencySelect.value;
+                    const selectedFrequency = frequencyOptions.find(f => f.value === frequencyValue);
+                    const multiplier = selectedFrequency ? selectedFrequency.multiplier : 1;
+
+                    const monthlyAmount = amount * multiplier;
+                    totalMonthlySpend += monthlyAmount;
+                    
+                    return { ...category, amountPerOccurrence: amount, frequency: frequencyValue, monthlyAmount: monthlyAmount };
+                });
+
+                if (totalMonthlySpend === 0) {
+                    alert('Please enter some spending amounts to calculate!');
+                    return;
+                }
+
+                const chartLabels = [];
+                const chartData = [];
+                const tableRowsHTML = [];
+
+                processedCategories.forEach((category, index) => {
+                    if (category.monthlyAmount > 0) { // Only include categories with spending in chart/table
+                        const percentage = (category.monthlyAmount / totalMonthlySpend) * 100;
+                        chartLabels.push(category.name);
+                        chartData.push(category.monthlyAmount);
+
+                        tableRowsHTML.push(`
+                            <tr>
+                                <td class="py-2 px-4 border-b border-stone-200">${category.name}</td>
+                                <td class="py-2 px-4 border-b border-stone-200 text-right">${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(category.monthlyAmount)}</td>
+                                <td class="py-2 px-4 border-b border-stone-200 text-right">${percentage.toFixed(1)}%</td>
+                            </tr>
+                        `);
+                    }
+                });
+
+                totalSpendingSpan.textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalMonthlySpend);
+                resultsTableBody.innerHTML = tableRowsHTML.join('');
+
+                if (spendingPieChartInstance) {
+                    spendingPieChartInstance.destroy();
+                }
+
+                spendingPieChartInstance = new Chart(chartCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            data: chartData,
+                            backgroundColor: categoryColors.slice(0, chartData.length),
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    generateLabels: function(chart) {
+                                        const data = chart.data;
+                                        if (data.labels.length && data.datasets.length) {
+                                            return data.labels.map((label, i) => {
+                                                const dataset = data.datasets[0];
+                                                const value = dataset.data[i];
+                                                const sum = dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = sum === 0 ? 0 : ((value / sum) * 100).toFixed(1);
+                                                
+                                                return {
+                                                    text: wrapText(`${label} (${percentage}%)`, 20), // Max length for legend items
+                                                    fillStyle: dataset.backgroundColor[i],
+                                                    strokeStyle: dataset.borderColor[i],
+                                                    lineWidth: 1,
+                                                    hidden: !chart.isDatasetVisible(0) || dataset.data[i] === 0,
+                                                    index: i
+                                                };
+                                            });
+                                        }
+                                        return [];
+                                    },
+                                    font: { size: 12 },
+                                    color: '#4A5568'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed !== null) {
+                                            const value = context.parsed;
+                                            const sum = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const percentage = sum === 0 ? 0 : ((value / sum) * 100).toFixed(1);
+                                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+                                            label += ` (${percentage}%)`;
+                                        }
+                                        return wrapText(label, 35); // Max length for tooltip lines
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                quizSection.classList.add('hidden');
+                resultsSection.classList.remove('hidden');
+            }
+
+            function resetQuiz() {
+                categoriesState = JSON.parse(JSON.stringify(initialCategoriesData)); // Reset state
+                populateCategories(); // Re-populate inputs with initial values
+
+                if (spendingPieChartInstance) {
+                    spendingPieChartInstance.destroy();
+                    spendingPieChartInstance = null;
+                }
+                
+                totalSpendingSpan.textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
+                resultsTableBody.innerHTML = '';
+
+                resultsSection.classList.add('hidden');
+                quizSection.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
